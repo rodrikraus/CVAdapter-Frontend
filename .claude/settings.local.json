@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/rod/**)",
+      "Read(//c/Program Files/**)",
+      "Read(//c/ProgramData/**)",
+      "Bash(netsh winhttp:*)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d.get\\(''''proxy'''',{}\\)\\)\")",
+      "Bash(reg query:*)",
+      "Bash(netstat -ano)",
+      "Bash(curl -s -D - \"http://localhost:5173/@react-refresh\")",
+      "Bash(wmic product:*)",
+      "Bash(tasklist)",
+      "Bash(curl -s -H \"Accept: */*\" -H \"Sec-Fetch-Dest: script\" \"http://localhost:3000/src/main.tsx\")",
+      "Bash(curl -s -D - -H \"if-none-match: W/\"\"230-1773957041660\"\"\" \"http://localhost:3000/src/main.tsx\")",
+      "Bash(curl -s \"http://localhost:3000/\")",
+      "Bash(curl -s -D - \"http://localhost:3001/src/entry.js\")",
+      "Bash(npx tsc:*)",
+      "Bash(npx eslint:*)",
+      "Bash(grep -E \"\\\\.\\(java|xml\\)$\")",
+      "Bash(pdflatex --version)",
+      "Bash(where pdflatex:*)",
+      "Bash(node -e \":*)",
+      "Bash(npx tsx:*)"
+    ]
+  }
+}
