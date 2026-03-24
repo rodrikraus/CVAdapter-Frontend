@@ -2,6 +2,7 @@ import { useState, useEffect, type ChangeEvent } from 'react';
 import './App.css';
 import type { CvRequest, CvResponse } from './types.ts';
 import { latexToHtml } from './latexPreview.ts';
+import { API } from './env.ts';
 
 const funnyMessages = [
   "Convenciendo a Gemini de que sos el mejor candidato...",
@@ -73,7 +74,7 @@ const App: React.FC = () => {
   const handleDownloadPdf = async () => {
     setPdfLoading(true);
     try {
-      const response = await fetch('http://localhost:8080/api/cv/pdf', {
+      const response = await fetch(API, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ latexContent: optimizedCv }),
@@ -106,7 +107,7 @@ const App: React.FC = () => {
     setError(null);
     
     try {
-      const response = await fetch('http://localhost:8080/api/cv/optimize', {
+      const response = await fetch(API, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
