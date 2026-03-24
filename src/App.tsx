@@ -74,7 +74,7 @@ const App: React.FC = () => {
   const handleDownloadPdf = async () => {
     setPdfLoading(true);
     try {
-      const response = await fetch(API, {
+      const response = await fetch(API+'/api/cv/pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ latexContent: optimizedCv }),
@@ -107,7 +107,7 @@ const App: React.FC = () => {
     setError(null);
     
     try {
-      const response = await fetch(API, {
+      const response = await fetch(API+'/api/cv/optimize', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
