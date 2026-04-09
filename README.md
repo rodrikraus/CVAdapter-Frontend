@@ -1,3 +1,6 @@
+[![es](https://img.shields.io/badge/Lang-Espa%C3%B1ol-red.svg)](README.md)
+[![en](https://img.shields.io/badge/Lang-English-blue.svg)](README.en.md)
+
 # CVAdapter - Frontend
 
 Frontend de CVAdapter, una herramienta impulsada por IA que optimiza CVs para ofertas de trabajo especificas. Construida con React 19 y TypeScript.
