@@ -156,11 +156,8 @@ const App: React.FC = () => {
   };
 
   const selectMode = (mode: 'pdf' | 'text' | 'latex') => {
-    if (cvMode === mode) {
-      setCvMode(null);
-    } else {
-      setCvMode(mode);
-    }
+    if (cvMode === mode) return;
+    setCvMode(mode);
     setPdfFile(null);
     setFormData(prev => ({ ...prev, cv: '' }));
   };
@@ -275,30 +272,25 @@ const App: React.FC = () => {
                 <div className="cv-mode-selector">
                   <button
                     type="button"
-                    className={`cv-mode-btn ${cvMode === 'pdf' ? 'active' : ''} ${cvMode && cvMode !== 'pdf' ? 'locked' : ''}`}
+                    className={`cv-mode-btn ${cvMode === 'pdf' ? 'active' : ''}`}
                     onClick={() => selectMode('pdf')}
                   >
                     {t.modePdf}
                   </button>
                   <button
                     type="button"
-                    className={`cv-mode-btn ${cvMode === 'text' ? 'active' : ''} ${cvMode && cvMode !== 'text' ? 'locked' : ''}`}
+                    className={`cv-mode-btn ${cvMode === 'text' ? 'active' : ''}`}
                     onClick={() => selectMode('text')}
                   >
                     {t.modeText}
                   </button>
                   <button
                     type="button"
-                    className={`cv-mode-btn ${cvMode === 'latex' ? 'active' : ''} ${cvMode && cvMode !== 'latex' ? 'locked' : ''}`}
+                    className={`cv-mode-btn ${cvMode === 'latex' ? 'active' : ''}`}
                     onClick={() => selectMode('latex')}
                   >
                     {t.modeLatex}
                   </button>
-                  {cvMode && (
-                    <button type="button" className="cv-mode-reset" onClick={() => selectMode(cvMode)}>
-                      ✕
-                    </button>
-                  )}
                 </div>
 
                 <div className={`step-content ${cvMode ? 'step-content-visible' : ''}`}>
