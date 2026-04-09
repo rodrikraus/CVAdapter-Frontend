@@ -180,18 +180,19 @@
 }
 
 /* ── Step reveal animation ── */
-.step-reveal .step-content {
+.step-content {
   display: grid;
   grid-template-rows: 0fr;
   opacity: 0;
   transition: grid-template-rows 0.4s ease, opacity 0.4s ease;
 }
 
-.step-reveal .step-content > * {
+.step-content > * {
   overflow: hidden;
 }
 
-.step-reveal.step-visible .step-content {
+.step-content-visible,
+.step-visible .step-content {
   grid-template-rows: 1fr;
   opacity: 1;
 }
@@ -202,6 +203,8 @@ textarea {
   border: 1px solid #ccc;
   resize: vertical;
   font-size: 14px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* ── CV input mode selector ── */
@@ -368,7 +371,10 @@ textarea {
   font-size: 15px;
   color: #555;
   font-style: italic;
-  min-height: 1.5em;
+  min-height: 3em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* ── Error popup ── */
@@ -579,13 +585,14 @@ textarea {
 }
 
 .cv-preview .cv-subheading {
-  margin: 6px 0;
+  margin: 10px 0 4px;
 }
 
 .cv-preview .cv-row {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
+  line-height: 1.6;
 }
 
 .cv-preview .cv-items {

@@ -4,6 +4,10 @@ import type { CvRequest, CvResponse } from './types.ts';
 import { latexToHtml } from './latexPreview.ts';
 import { API } from './env.ts';
 import translations, { type Lang } from './i18n.ts';
+import * as pdfjsLib from 'pdfjs-dist';
+import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.mjs?url';
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
 const App: React.FC = () => {
   const [lang, setLang] = useState<Lang>('es');
@@ -11,6 +15,7 @@ const App: React.FC = () => {
   const [page, setPage] = useState<'form' | 'result'>('form');
 
   const [cvMode, setCvMode] = useState<'pdf' | 'text' | 'latex' | null>(null);
+  const [displayMode, setDisplayMode] = useState<'pdf' | 'text' | 'latex' | null>(null);
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [formData, setFormData] = useState<CvRequest>({
     cv: '',
@@ -53,6 +58,15 @@ const App: React.FC = () => {
       return () => clearTimeout(timeout);
     }
   }, [loading, t]);
+
+  useEffect(() => {
+    if (cvMode) {
+      setDisplayMode(cvMode);
+    } else {
+      const timeout = setTimeout(() => setDisplayMode(null), 400);
+      return () => clearTimeout(timeout);
+    }
+  }, [cvMode]);
 
   // Manejador tipado para los textareas
   const handleChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
@@ -101,15 +115,38 @@ const App: React.FC = () => {
     return hasDocumentclass && hasBeginDocument && hasEndDocument;
   };
 
-  const handlePdfFile = (file: File) => {
+  const [pdfExtracting, setPdfExtracting] = useState(false);
+
+  const handlePdfFile = async (file: File) => {
     if (file.type !== 'application/pdf') return;
     setPdfFile(file);
-    const reader = new FileReader();
-    reader.onload = () => {
-      const base64 = (reader.result as string).split(',')[1];
-      setFormData(prev => ({ ...prev, cv: base64 }));
-    };
-    reader.readAsDataURL(file);
+    setPdfExtracting(true);
+    setFormData(prev => ({ ...prev, cv: '' }));
+
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      const pages: string[] = [];
+
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        const text = content.items
+          .map((item) => ('str' in item ? item.str : ''))
+          .join(' ');
+        pages.push(text);
+      }
+
+      const fullText = pages.join('\n\n');
+      if (!fullText.trim()) throw new Error('empty');
+      setFormData(prev => ({ ...prev, cv: fullText }));
+    } catch (err) {
+      console.error('PDF extraction error:', err);
+      setError(t.pdfExtractError);
+      setPdfFile(null);
+    } finally {
+      setPdfExtracting(false);
+    }
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -153,6 +190,9 @@ const App: React.FC = () => {
       }
 
       const data: CvResponse = await response.json();
+      if (!isValidLatex(data.optimizedCv)) {
+        throw new Error(t.invalidResponse);
+      }
       setOptimizedCv(data.optimizedCv);
       setPage('result');
     } catch (err) {
@@ -261,52 +301,58 @@ const App: React.FC = () => {
                   )}
                 </div>
 
-                {cvMode === 'pdf' && (
-                  <div
-                    className="pdf-dropzone"
-                    onDrop={handleDrop}
-                    onDragOver={(e) => e.preventDefault()}
-                    onClick={() => document.getElementById('pdf-input')?.click()}
-                  >
-                    <input
-                      id="pdf-input"
-                      type="file"
-                      accept=".pdf"
-                      hidden
-                      onChange={(e) => { if (e.target.files?.[0]) handlePdfFile(e.target.files[0]); }}
-                    />
-                    {pdfFile
-                      ? <p className="pdf-filename">{t.pdfSelected} <strong>{pdfFile.name}</strong></p>
-                      : <p>{t.pdfDrop}</p>
-                    }
+                <div className={`step-content ${cvMode ? 'step-content-visible' : ''}`}>
+                  <div>
+                    {displayMode === 'pdf' && (
+                      <div
+                        className="pdf-dropzone"
+                        onDrop={handleDrop}
+                        onDragOver={(e) => e.preventDefault()}
+                        onClick={() => document.getElementById('pdf-input')?.click()}
+                      >
+                        <input
+                          id="pdf-input"
+                          type="file"
+                          accept=".pdf"
+                          hidden
+                          onChange={(e) => { if (e.target.files?.[0]) handlePdfFile(e.target.files[0]); }}
+                        />
+                        {pdfExtracting
+                          ? <p className="pdf-extracting">{t.pdfExtracting}</p>
+                          : pdfFile
+                            ? <p className="pdf-filename">{t.pdfSelected} <strong>{pdfFile.name}</strong></p>
+                            : <p>{t.pdfDrop}</p>
+                        }
+                      </div>
+                    )}
+
+                    {displayMode === 'text' && (
+                      <textarea
+                        id="cv"
+                        name="cv"
+                        rows={10}
+                        value={formData.cv}
+                        onChange={(e) => { e.target.setCustomValidity(''); handleChange(e); }}
+                        onInvalid={(e) => (e.target as HTMLTextAreaElement).setCustomValidity(t.requiredField)}
+                        required
+                        placeholder={t.textPlaceholder}
+                      />
+                    )}
+
+                    {displayMode === 'latex' && (
+                      <textarea
+                        id="cv"
+                        name="cv"
+                        rows={10}
+                        value={formData.cv}
+                        onChange={(e) => { e.target.setCustomValidity(''); handleChange(e); }}
+                        onInvalid={(e) => (e.target as HTMLTextAreaElement).setCustomValidity(t.requiredField)}
+                        required
+                        placeholder={t.cvPlaceholder}
+                      />
+                    )}
                   </div>
-                )}
-
-                {cvMode === 'text' && (
-                  <textarea
-                    id="cv"
-                    name="cv"
-                    rows={10}
-                    value={formData.cv}
-                    onChange={(e) => { e.target.setCustomValidity(''); handleChange(e); }}
-                    onInvalid={(e) => (e.target as HTMLTextAreaElement).setCustomValidity(t.requiredField)}
-                    required
-                    placeholder={t.textPlaceholder}
-                  />
-                )}
-
-                {cvMode === 'latex' && (
-                  <textarea
-                    id="cv"
-                    name="cv"
-                    rows={10}
-                    value={formData.cv}
-                    onChange={(e) => { e.target.setCustomValidity(''); handleChange(e); }}
-                    onInvalid={(e) => (e.target as HTMLTextAreaElement).setCustomValidity(t.requiredField)}
-                    required
-                    placeholder={t.cvPlaceholder}
-                  />
-                )}
+                </div>
               </div>
 
               <div className={`input-group step-reveal ${formData.cv ? 'step-visible' : ''}`}>
@@ -329,12 +375,12 @@ const App: React.FC = () => {
                 </div>
               </div>
 
-              <div className={`input-group ${!formData.cv ? 'step-disabled' : ''}`}>
+              <div className={`input-group ${!formData.cv || !formData.jobOffer ? 'step-disabled' : ''}`}>
                 <div className="step-label">
-                  <span className={`step-number ${!formData.cv ? 'inactive' : ''}`}>3</span>
+                  <span className={`step-number ${!formData.cv || !formData.jobOffer ? 'inactive' : ''}`}>3</span>
                   <span className="step-text">{t.step3Label}</span>
                 </div>
-                <button type="submit" disabled={loading || !formData.cv} className="submit-btn">
+                <button type="submit" disabled={loading || !formData.cv || !formData.jobOffer} className="submit-btn">
                   {loading ? t.processing : t.optimizeBtn}
                 </button>
               </div>
