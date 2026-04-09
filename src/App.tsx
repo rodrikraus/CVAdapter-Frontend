@@ -3,23 +3,15 @@ import './App.css';
 import type { CvRequest, CvResponse } from './types.ts';
 import { latexToHtml } from './latexPreview.ts';
 import { API } from './env.ts';
-
-const funnyMessages = [
-  "Convenciendo a Gemini de que sos el mejor candidato...",
-  "Traduciendo 'sé usar Excel' a lenguaje corporativo...",
-  "Inflando tus habilidades blandas con IA...",
-  "Buscando sinónimos elegantes para 'laburé de todo'...",
-  "Enseñándole a Gemini qué es un trabajo en Argentina...",
-  "Haciendo que 5 meses parezcan 5 años de experiencia...",
-  "Reescribiendo 'manejo Office' como 'experto en suite ofimática'...",
-  "Pidiendo referencias a ChatGPT... digo, Gemini...",
-  "Transformando 'soy puntual' en una competencia estratégica...",
-  "Calculando cuántas buzzwords entran en una página...",
-  "Agregando 'proactivo' por decimoquinta vez...",
-  "Convirtiendo tu CV en algo que RRHH no tire a la basura...",
-];
+import translations, { type Lang } from './i18n.ts';
 
 const App: React.FC = () => {
+  const [lang, setLang] = useState<Lang>('es');
+  const t = translations[lang];
+  const [page, setPage] = useState<'form' | 'result'>('form');
+
+  const [cvMode, setCvMode] = useState<'pdf' | 'text' | 'latex' | null>(null);
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [formData, setFormData] = useState<CvRequest>({
     cv: '',
     jobOffer: ''
@@ -37,10 +29,10 @@ const App: React.FC = () => {
     if (loading) {
       setProgress(0);
       setShowPopup(true);
-      setFunnyMessage(funnyMessages[Math.floor(Math.random() * funnyMessages.length)]);
+      setFunnyMessage(t.funnyMessages[Math.floor(Math.random() * t.funnyMessages.length)]);
 
       const msgInterval = setInterval(() => {
-        setFunnyMessage(funnyMessages[Math.floor(Math.random() * funnyMessages.length)]);
+        setFunnyMessage(t.funnyMessages[Math.floor(Math.random() * t.funnyMessages.length)]);
       }, 3000);
 
       const progressInterval = setInterval(() => {
@@ -60,7 +52,7 @@ const App: React.FC = () => {
       const timeout = setTimeout(() => setShowPopup(false), 800);
       return () => clearTimeout(timeout);
     }
-  }, [loading]);
+  }, [loading, t]);
 
   // Manejador tipado para los textareas
   const handleChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
@@ -95,17 +87,58 @@ const App: React.FC = () => {
       a.remove();
       window.URL.revokeObjectURL(url);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al generar PDF');
+      setError(err instanceof Error ? err.message : t.pdfError);
     } finally {
       setPdfLoading(false);
     }
   };
 
+  const isValidLatex = (text: string): boolean => {
+    const trimmed = text.trim();
+    const hasDocumentclass = /\\documentclass[\s{[\]]/.test(trimmed);
+    const hasBeginDocument = /\\begin\s*\{document\}/.test(trimmed);
+    const hasEndDocument = /\\end\s*\{document\}/.test(trimmed);
+    return hasDocumentclass && hasBeginDocument && hasEndDocument;
+  };
+
+  const handlePdfFile = (file: File) => {
+    if (file.type !== 'application/pdf') return;
+    setPdfFile(file);
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = (reader.result as string).split(',')[1];
+      setFormData(prev => ({ ...prev, cv: base64 }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (file) handlePdfFile(file);
+  };
+
+  const selectMode = (mode: 'pdf' | 'text' | 'latex') => {
+    if (cvMode === mode) {
+      setCvMode(null);
+    } else {
+      setCvMode(mode);
+    }
+    setPdfFile(null);
+    setFormData(prev => ({ ...prev, cv: '' }));
+  };
+
   const handleOptimize = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setLoading(true);
     setError(null);
-    
+
+    if (cvMode === 'latex' && !isValidLatex(formData.cv)) {
+      setError(t.invalidLatex);
+      return;
+    }
+
+    setLoading(true);
+
     try {
       const response = await fetch(API+'/api/cv/optimize', {
         method: 'POST',
@@ -116,13 +149,14 @@ const App: React.FC = () => {
       });
 
       if (!response.ok) {
-        throw new Error(`Error en el servidor: ${response.statusText}`);
+        throw new Error(`${t.serverError}: ${response.statusText}`);
       }
 
       const data: CvResponse = await response.json();
       setOptimizedCv(data.optimizedCv);
+      setPage('result');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido');
+      setError(err instanceof Error ? err.message : t.unknownError);
     } finally {
       setLoading(false);
     }
@@ -130,6 +164,32 @@ const App: React.FC = () => {
 
   return (
     <>
+      <nav className="navbar">
+        <span className="navbar-brand">{t.title}</span>
+        <div className="navbar-links">
+          <button
+            className={`nav-link ${page === 'form' ? 'active' : ''}`}
+            onClick={() => setPage('form')}
+          >
+            {t.navOptimize}
+          </button>
+          <button
+            className={`nav-link ${page === 'result' ? 'active' : ''}`}
+            onClick={() => setPage('result')}
+          >
+            {t.navResult}
+          </button>
+        </div>
+        <div
+          className="lang-switch"
+          onClick={() => setLang(lang === 'es' ? 'en' : 'es')}
+        >
+          <span className={`lang-option ${lang === 'es' ? 'active' : ''}`}>ES</span>
+          <span className={`lang-option ${lang === 'en' ? 'active' : ''}`}>EN</span>
+          <div className={`lang-slider ${lang === 'en' ? 'right' : ''}`} />
+        </div>
+      </nav>
+
       {(loading || showPopup) && (
         <div className="loading-overlay">
           <div className="loading-popup">
@@ -139,75 +199,166 @@ const App: React.FC = () => {
               <div className="loading-bar-fill" style={{ width: `${progress}%` }} />
             </div>
             <p className="loading-message">
-              {progress >= 100 ? '¡Listo!' : funnyMessage}
+              {progress >= 100 ? t.done : funnyMessage}
             </p>
           </div>
         </div>
       )}
 
-      {!optimizedCv ? (
+      {error && (
+        <div className="loading-overlay" onClick={() => setError(null)}>
+          <div className="loading-popup error-popup" onClick={(e) => e.stopPropagation()}>
+            <div className="error-icon">!</div>
+            <p className="error-title">Error</p>
+            <p className="error-text">{error}</p>
+            <button className="error-close-btn" onClick={() => setError(null)}>
+              {t.back}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {page === 'form' ? (
         <div className="container">
           <header>
-            <h1>AI CV Optimizer <span role="img" aria-label="sparkles">✨</span></h1>
-            <p>Adaptá tu perfil a cualquier vacante en segundos.</p>
+            <h1>{t.title}</h1>
+            <p>{t.subtitle}</p>
           </header>
 
           <main>
             <form onSubmit={handleOptimize} className="form-container">
               <div className="input-group">
-                <label htmlFor="cv">Tu CV Actual:</label>
-                <textarea
-                  id="cv"
-                  name="cv"
-                  rows={10}
-                  value={formData.cv}
-                  onChange={handleChange}
-                  required
-                  placeholder="Copiá y pegá el contenido de tu CV aquí..."
-                />
+                <div className="step-label">
+                  <span className="step-number">1</span>
+                  <span className="step-text">{t.step1Label}</span>
+                </div>
+                <div className="cv-mode-selector">
+                  <button
+                    type="button"
+                    className={`cv-mode-btn ${cvMode === 'pdf' ? 'active' : ''} ${cvMode && cvMode !== 'pdf' ? 'locked' : ''}`}
+                    onClick={() => selectMode('pdf')}
+                  >
+                    {t.modePdf}
+                  </button>
+                  <button
+                    type="button"
+                    className={`cv-mode-btn ${cvMode === 'text' ? 'active' : ''} ${cvMode && cvMode !== 'text' ? 'locked' : ''}`}
+                    onClick={() => selectMode('text')}
+                  >
+                    {t.modeText}
+                  </button>
+                  <button
+                    type="button"
+                    className={`cv-mode-btn ${cvMode === 'latex' ? 'active' : ''} ${cvMode && cvMode !== 'latex' ? 'locked' : ''}`}
+                    onClick={() => selectMode('latex')}
+                  >
+                    {t.modeLatex}
+                  </button>
+                  {cvMode && (
+                    <button type="button" className="cv-mode-reset" onClick={() => selectMode(cvMode)}>
+                      ✕
+                    </button>
+                  )}
+                </div>
+
+                {cvMode === 'pdf' && (
+                  <div
+                    className="pdf-dropzone"
+                    onDrop={handleDrop}
+                    onDragOver={(e) => e.preventDefault()}
+                    onClick={() => document.getElementById('pdf-input')?.click()}
+                  >
+                    <input
+                      id="pdf-input"
+                      type="file"
+                      accept=".pdf"
+                      hidden
+                      onChange={(e) => { if (e.target.files?.[0]) handlePdfFile(e.target.files[0]); }}
+                    />
+                    {pdfFile
+                      ? <p className="pdf-filename">{t.pdfSelected} <strong>{pdfFile.name}</strong></p>
+                      : <p>{t.pdfDrop}</p>
+                    }
+                  </div>
+                )}
+
+                {cvMode === 'text' && (
+                  <textarea
+                    id="cv"
+                    name="cv"
+                    rows={10}
+                    value={formData.cv}
+                    onChange={(e) => { e.target.setCustomValidity(''); handleChange(e); }}
+                    onInvalid={(e) => (e.target as HTMLTextAreaElement).setCustomValidity(t.requiredField)}
+                    required
+                    placeholder={t.textPlaceholder}
+                  />
+                )}
+
+                {cvMode === 'latex' && (
+                  <textarea
+                    id="cv"
+                    name="cv"
+                    rows={10}
+                    value={formData.cv}
+                    onChange={(e) => { e.target.setCustomValidity(''); handleChange(e); }}
+                    onInvalid={(e) => (e.target as HTMLTextAreaElement).setCustomValidity(t.requiredField)}
+                    required
+                    placeholder={t.cvPlaceholder}
+                  />
+                )}
               </div>
 
-              <div className="input-group">
-                <label htmlFor="jobOffer">Descripción de la Vacante:</label>
-                <textarea
-                  id="jobOffer"
-                  name="jobOffer"
-                  rows={10}
-                  value={formData.jobOffer}
-                  onChange={handleChange}
-                  required
-                  placeholder="Pegá los requisitos y descripción del puesto..."
-                />
+              <div className={`input-group step-reveal ${formData.cv ? 'step-visible' : ''}`}>
+                <div className="step-label">
+                  <span className={`step-number ${!formData.cv ? 'inactive' : ''}`}>2</span>
+                  <span className="step-text">{t.step2Label}</span>
+                </div>
+                <div className="step-content">
+                  <textarea
+                    id="jobOffer"
+                    name="jobOffer"
+                    rows={10}
+                    value={formData.jobOffer}
+                    onChange={(e) => { e.target.setCustomValidity(''); handleChange(e); }}
+                    onInvalid={(e) => (e.target as HTMLTextAreaElement).setCustomValidity(t.requiredField)}
+                    required
+                    disabled={!formData.cv}
+                    placeholder={t.jobPlaceholder}
+                  />
+                </div>
               </div>
 
-              <button type="submit" disabled={loading} className="submit-btn">
-                {loading ? 'Procesando con Gemini...' : 'Optimizar CV'}
-              </button>
+              <div className={`input-group ${!formData.cv ? 'step-disabled' : ''}`}>
+                <div className="step-label">
+                  <span className={`step-number ${!formData.cv ? 'inactive' : ''}`}>3</span>
+                  <span className="step-text">{t.step3Label}</span>
+                </div>
+                <button type="submit" disabled={loading || !formData.cv} className="submit-btn">
+                  {loading ? t.processing : t.optimizeBtn}
+                </button>
+              </div>
             </form>
 
-            {error && <div className="error-message">❌ {error}</div>}
           </main>
         </div>
-      ) : (
+      ) : optimizedCv ? (
         <div className="result-page">
           <div className="result-header">
-            <h2>Resultado Optimizado</h2>
+            <h2>{t.resultTitle}</h2>
             <div className="result-header-actions">
-              <button className="back-btn" onClick={() => setOptimizedCv('')}>
-                Volver
-              </button>
               <div className="result-tabs">
                 <button
                   className={`tab-btn ${activeTab === 'preview' ? 'active' : ''}`}
                   onClick={() => setActiveTab('preview')}
                 >
-                  Vista Previa
+                  {t.preview}
                 </button>
                 <button
                   className={`tab-btn ${activeTab === 'editor' ? 'active' : ''}`}
                   onClick={() => setActiveTab('editor')}
                 >
-                  Editor LaTeX
+                  {t.latexEditor}
                 </button>
               </div>
             </div>
@@ -234,16 +385,20 @@ const App: React.FC = () => {
               onClick={() => navigator.clipboard.writeText(optimizedCv)}
               className="copy-btn"
             >
-              Copiar LaTeX
+              {t.copyLatex}
             </button>
             <button
               onClick={handleDownloadPdf}
               disabled={pdfLoading}
               className="download-btn"
             >
-              {pdfLoading ? 'Generando PDF...' : 'Descargar PDF'}
+              {pdfLoading ? t.generatingPdf : t.downloadPdf}
             </button>
           </div>
+        </div>
+      ) : (
+        <div className="empty-result">
+          <p>{t.emptyResult}</p>
         </div>
       )}
     </>
