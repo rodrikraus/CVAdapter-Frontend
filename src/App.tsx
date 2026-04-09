@@ -138,7 +138,6 @@ const App: React.FC = () => {
       }
 
       const fullText = pages.join('\n\n');
-      console.log('PDF extracted text:', fullText);
       if (!fullText.trim()) throw new Error('empty');
       setFormData(prev => ({ ...prev, cv: fullText }));
     } catch (err) {
