@@ -51,6 +51,8 @@ const translations = {
       "Agregando 'proactivo' por decimoquinta vez...",
       "Convirtiendo tu CV en algo que RRHH no tire a la basura...",
     ],
+    footerMade: 'Hecho por Rodrigo Kraus',
+    footerSupport: 'Podes apoyar mi trabajo en:',
   },
   en: {
     title: 'AI CV Adapter',
@@ -102,6 +104,8 @@ const translations = {
       "Adding 'proactive' for the fifteenth time...",
       "Turning your CV into something HR won't throw away...",
     ],
+    footerMade: 'Made by Rodrigo Kraus',
+    footerSupport: 'You can support my work at:',
   },
 } as const;
 
