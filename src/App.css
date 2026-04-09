@@ -34,6 +34,7 @@
 .navbar-brand {
   position: absolute;
   left: 24px;
+  user-select: none;
 }
 
 .navbar .lang-switch {
