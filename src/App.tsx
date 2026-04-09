@@ -10,7 +10,7 @@ import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.mjs?url';
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
 const App: React.FC = () => {
-  const [lang, setLang] = useState<Lang>('es');
+  const [lang, setLang] = useState<Lang>('en');
   const t = translations[lang];
   const [page, setPage] = useState<'form' | 'result'>('form');
 
@@ -138,6 +138,7 @@ const App: React.FC = () => {
       }
 
       const fullText = pages.join('\n\n');
+      console.log('PDF extracted text:', fullText);
       if (!fullText.trim()) throw new Error('empty');
       setFormData(prev => ({ ...prev, cv: fullText }));
     } catch (err) {
@@ -221,9 +222,9 @@ const App: React.FC = () => {
           className="lang-switch"
           onClick={() => setLang(lang === 'es' ? 'en' : 'es')}
         >
-          <span className={`lang-option ${lang === 'es' ? 'active' : ''}`}>ES</span>
           <span className={`lang-option ${lang === 'en' ? 'active' : ''}`}>EN</span>
-          <div className={`lang-slider ${lang === 'en' ? 'right' : ''}`} />
+          <span className={`lang-option ${lang === 'es' ? 'active' : ''}`}>ES</span>
+          <div className={`lang-slider ${lang === 'es' ? 'right' : ''}`} />
         </div>
       </nav>
 
